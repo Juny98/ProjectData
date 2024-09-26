@@ -1,0 +1,85 @@
+1. 로그인 시도 : '크리덴셜 스터핑(Credential Stuffing)'공격 / 무차별 대입 공격
+규칙
+> 시간당 요청 갯수 탐지 rules
+
+다량의 POST
+
+- 다량의 글 작성
+규칙
+
+작성 스크립트
+
+- ssh 요청 트래픽
+규칙
+alert tcp any any -> $HOME_NET 22 (msg:"SSH Logon Detected"; sid:000,001;)
+
+> ssh 접속 시도
+
+------
+
+2. HTTP GET 요청
+
+규칙
+alert tcp any any -> any any (msg:"Detect /etc/passwd access"; content:"GET /etc/passwd"; sid:1000001;)
+
+터미널
+curl http://localhost/ --header "GET /etc/passwd"
+
+
+- ICMP Ping Sweep Detection (ICMP 핑 스위프트 감지) : 네트워크 스캔
+규칙
+alert icmp $EXTERNAL_NET any -> $HOME_NET any (msg:"ICMP Ping Sweep Detected"; dsize:0; itype:8;)
+
+ping 223.130.147.99 -c 1
+
+- NMAP XMAS Scan : 포트 스캐닝
+규칙
+alert tcp any any -> $HOME_NET any (msg:"NMAP XMAS"; flags:FPU; sid:1,000,009; rev:1;)
+alert tcp any any -> $HOME_NET any (msg:"SYN Scanning Detcttion"; flags:S; threshold:type both, track by_src, count 5, seconds 10; sid:1,000,051;)
+
+> nmap -sX -p 21 223.130.147.99
+> nmap -sS 223.130.147.99
+
+- Web Attack
+규칙
+alert tcp any any -> $HOME_NET 80 (msg:"Web Attack"; content:"GET /cmd.exe"; nocase; sid:1,000,012; rev:1;)
+
+> wafw00f http://223.130.147.99
+
+------
+
+3. 비정상 패킷 탐지
+- 출발지와 목적지가 동일한 IP (Land Attack) : 네트워크 장비 혼란, DoS 공격
+규칙
+alert ip any any -> any any (msg:"Nand Attack Detected"; ip_src:[$HOME_NET]; ip_dst:[$HOME_NET];)
+
+> 패킷 생성 스크립트 활용
+
+- Ping of Death Detection (핑 오브 데스 감지) : DoS 공격, 너무 큰 패킷 > 마비
+alert icmp $EXTERNAL_NET any -> $HOME_NET any (msg:"Ping of Death Detected"; dsize:>996; itype:8;)
+
+> hping~ 작은 갯수 / 주기 길게 하면 가능??
+
+- TCP SYN Flood Detetion (TCP SYN 플로딩 감지) : DDoS, 대량 SYN 패킷, 대기큐 가득...
+규칙
+alert tcp any any -> $HOME_NET any (msg:"TCP SYN Flood Detected"; flags:S; threshold: type threshold, track by_dst, count 10, seconds 60; sid:1,000,002;)
+
+> hping~ ?? / 간단히 플래그 변경만으로 테스트 가능!
+
+------
+
+
+alert tcp any any -> any 80 (
+msg : "TestAttack";
+content : "Test";      # 매칭할 문자열
+sid : 12345;    # 예약(~2,999,999) / 3,000,000 이상부터
+classtype : attempted-admin;    # 분류 옵션 > 'classification.config' 에 정의
+Rev : 1;    # 규칙 수정 버전
+)
+
+alert / log / pass / active / dynamic (drop, reject, sdrop)
+tcp / udp / icmp / ip
+any, 1.1.1.1, [ , ], [ /24] / any, 80, 1:1024, !80
+-> / <>
+
+
